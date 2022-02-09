@@ -48,6 +48,10 @@ public class Crawler {
         try {
             final Connection.Response response = Jsoup.connect(URL).execute();
             final Document doc = response.parse();
+            String title = doc.title();
+            //System.out.println(title);
+
+            /*
             Elements wikiDataItems = doc.select("a[href^=\"https://www.wikidata.org/wiki/Special:EntityPage/\"]");
             String uniqueURL = "";
             for (Element item : wikiDataItems) {
@@ -55,23 +59,17 @@ public class Crawler {
                 //System.out.println("URL: "+" [" + URL + "], "+"UniqueURL: "+uniqueURL);
                 break;
             }
-            if ((!links.contains(uniqueURL) && (depth <= MAX_DEPTH))) {
-                System.out.println(">> Depth: " + depth + " [" + URL + "]");
 
-                if (uniqueURL.length() != 0) {
-                    links.add(uniqueURL);
-                }
-                else{
-                    return;
-                }
-
-                String title = doc.title();
+             */
+            if ((!links.contains(title) && (depth <= MAX_DEPTH))) {
+                links.add(title);
+                System.out.println(depth);
                 //String body = doc.body().text();
                 Elements paragraphs = doc.select("p");
                 if (fileCount > 100000) {
                     return;
                 }
-                writeToFile("crawledFiles/" + title + ".txt", title, paragraphs);
+                writeToFile("crawledPages/" + title + ".txt", title, paragraphs);
 
                 fileCount++;
                 //Document document = Jsoup.connect(URL).get(); //create a file for each page

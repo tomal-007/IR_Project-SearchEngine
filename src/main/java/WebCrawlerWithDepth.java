@@ -5,6 +5,8 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class WebCrawlerWithDepth {
     private static final int MAX_DEPTH = 2;
@@ -18,7 +20,12 @@ public class WebCrawlerWithDepth {
         if ((!links.contains(URL) && (depth < MAX_DEPTH))) {
             System.out.println(">> Depth: " + depth + " [" + URL + "]");
             try {
-                links.add(URL);
+                Pattern pattern = Pattern.compile("^https://en.wikipedia.org", Pattern.CASE_INSENSITIVE);
+                Matcher matcher = pattern.matcher(URL);
+                boolean matchFound = matcher.find();
+                if (matchFound) {
+                    links.add(URL);
+                }
 
                 Document document = Jsoup.connect(URL).get();
                 Elements linksOnPage = document.select("a[href]");

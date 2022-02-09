@@ -10,19 +10,32 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class Crawler {
+    private static final int MAX_DEPTH = 5;
+    private HashSet<String> links;
+    int fileCount;
 
-    public void writeToFile(String filename, String temp) {
-        FileWriter writer;
+    public Crawler() {
+        links = new HashSet<>();
+        fileCount = 0;
+    }
+
+
+    public void writeToFile(String filename, String title, Elements paragraphs) {
+
         try {
-            writer = new FileWriter(filename);
-            try {
-                //save to file
-                writer.write(temp);
-            } catch (IOException e) {
-                System.err.println(e.getMessage());
+            FileWriter writer = new FileWriter(filename);
+
+            writer.write(title);
+            writer.write("\n");
+            for (Element p : paragraphs) {
+                writer.write(p.text());
+                writer.write("\n");
             }
 
             writer.close();
@@ -31,52 +44,64 @@ public class Crawler {
         }
     }
 
-    public static void main(String[] args) {
-
-        //Document doc;
+    public void getPageLinks(String URL, int depth) {
         try {
-
-            // need http protocol
-            /*
-            doc = Jsoup.connect("http://google.com").get();
-
-            // get page title
-            String title = doc.title();
-            System.out.println("title : " + title);
-
-            // get all links
-            Elements links = doc.select("a[href]");
-            Elements x= doc.outerHtml();
-            String temp= x.text();
-            for (Element link : links) {
-
-                // get the value from href attribute
-                System.out.println("\nlink : " + link.attr("href"));
-                System.out.println("text : " + link.text());
-
-            }
-            FileWriter writer;
-            String filename="abcd.txt";
-            writer = new FileWriter(filename);
-            try {
-                writer.write(temp);
-                writer.close();
-            } catch (IOException e) {
-                System.err.println(e.getMessage());
-            }
-            */
-            final Connection.Response response = Jsoup.connect("https://en.wikipedia.org/wiki/World_War_II").execute();
+            final Connection.Response response = Jsoup.connect(URL).execute();
             final Document doc = response.parse();
+            Elements wikiDataItems = doc.select("a[href^=\"https://www.wikidata.org/wiki/Special:EntityPage/\"]");
+            String uniqueURL = "";
+            for (Element item : wikiDataItems) {
+                uniqueURL = item.attr("abs:href").split("#")[0];
+                //System.out.println("URL: "+" [" + URL + "], "+"UniqueURL: "+uniqueURL);
+                break;
+            }
+            if ((!links.contains(uniqueURL) && (depth <= MAX_DEPTH))) {
+                System.out.println(">> Depth: " + depth + " [" + URL + "]");
 
-            final File f = new File("filename.html");
-            FileUtils.writeStringToFile(f, doc.outerHtml(), StandardCharsets.UTF_8);
+                if (uniqueURL.length() != 0) {
+                    links.add(uniqueURL);
+                }
+                else{
+                    return;
+                }
 
+                String title = doc.title();
+                //String body = doc.body().text();
+                Elements paragraphs = doc.select("p");
+                if (fileCount > 100000) {
+                    return;
+                }
+                writeToFile("crawledFiles/" + title + ".txt", title, paragraphs);
 
+                fileCount++;
+                //Document document = Jsoup.connect(URL).get(); //create a file for each page
 
-        } catch (IOException e) {
-            e.printStackTrace();
+                Elements linksOnPage =doc.select("p a[href]");
+                depth++;
+                for (Element page : linksOnPage) {
+                    String matchedURL = page.attr("abs:href");
+                    //if (page.text().matches("^.*?(Java 8|java 8|JAVA 8).*$"))
+                    Pattern pattern = Pattern.compile("^https://en.wikipedia.org", Pattern.CASE_INSENSITIVE);
+                    Matcher matcher = pattern.matcher(matchedURL);
+                    boolean matchFound = matcher.find();
+                    if (matchFound) {
+                        try {
+                            matchedURL = matchedURL.split("#")[0];
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        getPageLinks(matchedURL, depth);
+                    }
+
+                }
+
+            }
+        } catch (Exception e) {
+            //System.err.println("For '" + URL + "': " + e.getMessage());
         }
-
     }
 
+    public static void main(String[] args) {
+        new Crawler().getPageLinks("https://en.wikipedia.org/wiki/Novel", 1);
+    }
 }
